@@ -1,15 +1,16 @@
-from SegmentFlag import SegmentFlag
-from constant import *
-from CRC import CRC
-from struct import Struct
+from .SegmentFlag import SegmentFlag
+from .constant import *
+from .crc import CRC
+import struct
 
-'''
+"""
     @attribute seq_num: int
     @attribute ack_num: int
     @attribute flag: SegmentFlag
     @attribute checksum: int
     @attribute payload: bytes
-'''
+"""
+
 
 class Segment:
     def __init__(self):
@@ -27,7 +28,7 @@ class Segment:
 
     def get_flag(self) -> SegmentFlag:
         return self.flag
-    
+
     def get_payload(self) -> bytes:
         return self.payload
 
@@ -40,11 +41,11 @@ class Segment:
     def set_flag(self, flag: list[str]):
         _flag = 0b0
         for f in flag:
-            if f == 'SYN':
+            if f == "SYN":
                 _flag |= SYN_FLAG
-            elif f == 'ACK':
+            elif f == "ACK":
                 _flag |= ACK_FLAG
-            elif f == 'FIN':
+            elif f == "FIN":
                 _flag |= FIN_FLAG
         self.flag = SegmentFlag(_flag)
 
@@ -63,17 +64,21 @@ class Segment:
         return self.calculate_checksum() == self.checksum
 
     def generate_bytes(self) -> bytes:
+        self.checksum = self.calculate_checksum()
         segment = b""
-        segment += Struct.pack("II", self.seq_num, self.ack_num)
+        segment += struct.pack("II", self.seq_num, self.ack_num)
         segment += self.flag.get_flag_bytes()
-        segment += Struct.pack("x")
-        segment += Struct.pack("H", self.checksum)
+        segment += struct.pack("x")
+        segment += struct.pack("H", self.checksum)
         segment += self.payload
         return segment
-    
+
     def parse_bytes(self, segment: bytes):
-        self.seq_num = Struct.unpack("I", segment[0:4])[0]
-        self.ack_num = Struct.unpack("I", segment[4:8])[0]
-        self.flag = SegmentFlag(Struct.unpack("B", segment[8:9])[0])
-        self.checksum = Struct.unpack("H", segment[10:12])[0]
+        self.seq_num = struct.unpack("I", segment[0:4])[0]
+        self.ack_num = struct.unpack("I", segment[4:8])[0]
+        self.flag = SegmentFlag(struct.unpack("B", segment[8:9])[0])
+        self.checksum = struct.unpack("H", segment[10:12])[0]
         self.payload = segment[12:]
+
+    def __str__(self) -> str:
+        return f"seq_num: {self.seq_num}\nack_num: {self.ack_num}\nflag: {self.flag}\nchecksum: {self.checksum}\npayload: {self.payload}"
