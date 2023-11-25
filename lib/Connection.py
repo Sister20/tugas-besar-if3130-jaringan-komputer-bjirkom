@@ -1,8 +1,6 @@
 import socket
 import sys
-
-# TODO: to be deleted, should be the segment size
-bufferSize = 1024
+from constant import MAX_SEGMENT
 
 class Connection:
   def __init__(self, ip : str,  port : int):
@@ -23,7 +21,7 @@ class Connection:
 
   def listenMsg(self):
     while (True):
-      bytesAddressPair = self.socket.recvfrom(bufferSize)
+      bytesAddressPair = self.socket.recvfrom(MAX_SEGMENT)
       
       msg = bytesAddressPair[0]
       address = bytesAddressPair[1]

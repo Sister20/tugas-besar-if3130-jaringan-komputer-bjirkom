@@ -1,6 +1,6 @@
 from SegmentFlag import SegmentFlag
 from constant import *
-from crc import CRC
+from CRC import CRC
 from struct import Struct
 
 '''
