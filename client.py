@@ -1,5 +1,5 @@
 from lib.Connection import Connection
-from lib.clientparser import ClientParser
+from lib.ClientParser import ClientParser
 from lib.Segment import Segment
 from lib.flags import Flags
 from lib.constant import *
