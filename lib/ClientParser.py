@@ -20,7 +20,6 @@ class ClientParser:
             print("[!] Client port input is not valid. Exiting...")
             exit()
 
-
         if (not isinstance(args.output_path, str)):
             print("[!] Input path is not valid. Exiting...")
             exit()
