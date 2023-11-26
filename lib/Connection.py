@@ -1,7 +1,6 @@
 import socket
 import sys
-from .constant import MAX_SEGMENT
-
+from .constant import MAX_SEGMENT, TIMEOUT
 
 class Connection:
     def __init__(self, ip: str, port: int, is_server: bool):
@@ -23,14 +22,18 @@ class Connection:
         else:
             print(f"[!] Client started at {self.ip}:{self.port}")
 
-    def listenMsg(self):
-        while True:
+    def listenMsg(self, timeout = TIMEOUT):
+        try:
+            self.socket.settimeout(timeout)
             bytesAddressPair = self.socket.recvfrom(MAX_SEGMENT)
 
             msg = bytesAddressPair[0]
             address = bytesAddressPair[1]
 
             return msg, address
+        
+        except TimeoutError as e:
+            raise e
 
     def sendMsg(self, msg, dest):
         self.socket.sendto(msg, dest)

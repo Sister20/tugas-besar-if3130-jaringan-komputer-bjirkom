@@ -1,5 +1,5 @@
 import argparse
-
+import os
 
 class ClientParser:
     def __init__(self):
@@ -10,7 +10,18 @@ class ClientParser:
         )
         self.parser.add_argument("-op", "--output_path", type=str, help="Output Path")
 
+    def validate_input(self, args):
+        # check if input is valid
+        if (not isinstance(args.broadcast_port, int)):
+            print("[!] Broadcast port input is not valid. Exiting...")
+            exit()
+
+        if (not isinstance(args.input_path, str)):
+            print("[!] Input path is not valid. Exiting...")
+            exit()
+            
     # Returns tuple (client_port, broadcast_port, output_path)
     def get_args(self):
         args = self.parser.parse_args()
+        self.validate_input(args)
         return args.client_port, args.broadcast_port, args.output_path

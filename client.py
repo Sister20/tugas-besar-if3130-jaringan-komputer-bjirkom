@@ -1,5 +1,5 @@
 from lib.Connection import Connection
-from lib.clientparser import ClientParser
+from lib.ClientParser import ClientParser
 from lib.Segment import Segment
 from lib.flags import Flags
 from lib.constant import *
@@ -36,8 +36,11 @@ class Client:
             break
         print("Connection established")
 
+    def send_request(self):
+        self.connection.sendMsg(self.segment.generate_bytes(), ("127.0.0.1", self.broadcast_port))
 
 if __name__ == "__main__":
     client = Client()
-    client.three_way_handshake()
+    client.send_request()
+    # client.three_way_handshake()
     client.connection.closeSocket()
