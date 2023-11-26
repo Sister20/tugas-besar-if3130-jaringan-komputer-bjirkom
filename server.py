@@ -1,5 +1,5 @@
 from lib.Connection import Connection
-from lib.serverparser import ServerParser
+from lib.ServerParser import ServerParser
 from lib.Segment import Segment
 from lib.flags import Flags
 from lib.constant import MAX_SEGMENT
