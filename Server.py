@@ -18,20 +18,42 @@ class Server:
         self.segment = Segment()
         self.client_list = list()
         
-    # TODO: Add timeout implementation
-    def three_way_handshake(self):
-        while True:
-            print("[Handshake] Waiting for clients...")
-            _, address = self.connection.listenMsg()
-            print(f"[Handshake] Received SYN request from client {address}")
-            print(f"[Handshake] Sending SYN-ACK response to {address}")
-            self.segment = Flags.syn_ack(seq_num=300, ack_num=101)
-            self.connection.sendMsg(self.segment.generate_bytes(), ("127.0.0.1", 50001))
+    def three_way_handshake(self, address):
+        try: 
+            # Sending SYN requests to client
+            print(f"[Handshake] Initiating three way handshake with client {address[0]}:{address[1]}")
+            print(f"[Handshake] Sending SYN request to client {address[0]}:{address[1]}")
+
+            self.segment = Flags.syn(seq_num=0)
+            self.connection.sendMsg(self.segment.generate_bytes(), address)
+            
+            # Waiting for response
             print("[Handshake] Waiting client response...")
-            _, address = self.connection.listenMsg()
-            print("[Handshake] Received ACK flag from client")
-            break
-        print("Connection established")
+
+            while True:
+                reply_segment, reply_address = self.connection.listenMsg()
+                self.segment.parse_bytes(reply_segment)
+                
+                # If the response is appropriate
+                if reply_address[1] == address[1]:
+                    if self.segment.get_flag().syn and self.segment.get_flag().ack:
+                        print(f"[Handshake] Received SYN-ACK response from client {address[0]}:{address[1]}")
+
+                        # Send ack to address
+                        print(f"[Handshake] Sending ACK response to client {address[0]}:{address[1]}")
+                        
+                        self.segment = Flags.ack(seq_num=1, ack_num=1)
+                        self.connection.sendMsg(
+                            self.segment.generate_bytes(), address
+                        )
+                        print(f"[Handshake] Connection established with client {address[0]}:{address[1]}\n")
+                    else:
+                        print(f"[Handshake] Received invalid handshake response from client {reply_address[0]}:{reply_address[1]}")
+                        exit()
+                    break
+    
+        except TimeoutError:
+            print(f"[Error] Timeout Error while waiting for client {address[0]}:{address[1]}. Exiting...")
     
     def open_for_request(self):
         # the file size is soon to be change 
@@ -63,5 +85,5 @@ class Server:
 if __name__ == "__main__":
     server = Server()
     server.open_for_request()
-    # server.three_way_handshake()
+    server.three_way_handshake(("127.0.0.1", 3002))
     server.connection.closeSocket()

@@ -1,5 +1,6 @@
 import socket
 import sys
+from .Segment import Segment
 from .constant import MAX_SEGMENT, TIMEOUT
 
 class Connection:
@@ -22,7 +23,7 @@ class Connection:
         else:
             print(f"[!] Client started at {self.ip}:{self.port}")
 
-    def listenMsg(self, timeout = TIMEOUT):
+    def listenMsg(self, timeout = TIMEOUT) -> tuple[Segment, tuple]:
         try:
             self.socket.settimeout(timeout)
             bytesAddressPair = self.socket.recvfrom(MAX_SEGMENT)
