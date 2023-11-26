@@ -16,7 +16,12 @@ class ClientParser:
             print("[!] Broadcast port input is not valid. Exiting...")
             exit()
 
-        if (not isinstance(args.input_path, str)):
+        if (not isinstance(args.client_port, int)):
+            print("[!] Client port input is not valid. Exiting...")
+            exit()
+
+
+        if (not isinstance(args.output_path, str)):
             print("[!] Input path is not valid. Exiting...")
             exit()
             

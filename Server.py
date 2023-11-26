@@ -2,7 +2,7 @@ from lib.Connection import Connection
 from lib.ServerParser import ServerParser
 from lib.Segment import Segment
 from lib.flags import Flags
-from lib.constant import MAX_SEGMENT, TIMEOUT_SERVER
+from lib.constant import MAX_SEGMENT, LISTEN_TIMEOUT
 import os
 
 
@@ -40,7 +40,7 @@ class Server:
         more_request = True
         while more_request:
             try: 
-                _, address = self.connection.listenMsg(TIMEOUT_SERVER)
+                _, address = self.connection.listenMsg(LISTEN_TIMEOUT)
                 self.client_list.append(address)
                 print(f"[!] Received request from {address[0]}:{address[1]}")
                 
