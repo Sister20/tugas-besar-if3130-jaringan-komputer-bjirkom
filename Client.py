@@ -181,6 +181,33 @@ class Client:
         print(f"[Close] Connection closed with server {address[0]}:{address[1]}")
         self.connection.closeSocket()
 
+    def receive_data(self):
+        # Sequence number 2 : Metadata
+        # Sequence number 3++ : Actual data
+        request_number = 3
+        while True:
+            segment_in_byte, server_addr = self.connection.listenMsg()
+            if server_addr[1] == self.broadcast_port:
+                self.segment.parse_bytes(segment_in_byte)
+
+                if not self.segment.checksum():
+                    # corrupt 
+                    pass
+                if self.segment.get_ack() == 2:
+                    # parse metadata
+                    pass
+                elif self.segment.get_ack() == request_number:
+                    payload = self.segment.get_payload()
+                    # parse payload and write to file
+                elif self.segment.get_flag().fin:
+                    # close connection
+                    pass
+                elif self.segment.get_ack() < request_number:
+                    # duplicate
+                    pass
+                elif self.segment.get > request_number:
+                    # out of order
+                    pass
 
 if __name__ == "__main__":
     client = Client()

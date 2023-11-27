@@ -1,7 +1,7 @@
 import os
 from math import *
 from io import *
-from constant import *
+from .constant import *
 
 class FileParser:
 
