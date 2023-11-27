@@ -145,7 +145,7 @@ class Client:
 
         print(f"[Close] Sending FIN-ACK to server {address[0]}:{address[1]}")
         while True:
-            self.segment = Flags.ack(
+            self.segment = Flags.fin_ack(
                 seq_num=300, ack_num=101
             )  # TODO: change seq_num and ack_num
             self.connection.sendMsg(
