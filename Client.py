@@ -178,6 +178,9 @@ class Client:
                     f"[Error] Timeout Error while waiting for server {address[0]}:{address[1]}. Resending FIN-ACK..."
                 )
 
+        print(f"[Close] Connection closed with server {address[0]}:{address[1]}")
+        self.connection.closeSocket()
+
 
 if __name__ == "__main__":
     client = Client()
