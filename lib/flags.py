@@ -27,9 +27,16 @@ class Flags:
 
     # TODO: implement fin and fin_ack
     @staticmethod
-    def fin() -> Segment:
-        pass
+    def fin(seq_num: int) -> Segment:
+        fin_segment = Segment()
+        fin_segment.set_flag(["FIN"])
+        fin_segment.set_seq(seq_num)
+        return fin_segment
 
     @staticmethod
-    def fin_ack() -> Segment:
-        pass
+    def fin_ack(seq_num: int, ack_num: int) -> Segment:
+        fin_ack_segment = Segment()
+        fin_ack_segment.set_flag(["FIN", "ACK"])
+        fin_ack_segment.set_seq(seq_num)
+        fin_ack_segment.set_ack(ack_num)
+        return fin_ack_segment
