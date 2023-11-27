@@ -3,6 +3,7 @@ from lib.ServerParser import ServerParser
 from lib.Segment import Segment
 from lib.flags import Flags
 from lib.constant import MAX_SEGMENT, LISTEN_TIMEOUT, WINDOW_SIZE
+from lib.FileParser import FileParser
 import os
 
 
@@ -17,6 +18,8 @@ class Server:
         )
         self.segment = Segment()
         self.client_list = list()
+
+        self.file_parser = FileParser(self.input_path)
 
     # TODO: Resend if timeout
     def three_way_handshake(self, address):
@@ -245,6 +248,30 @@ class Server:
             self.three_way_handshake(client_address)
             self.file_transfer(client_address)
 
+    def parsefile_to_segments(self):
+        self.file_segments: list[Segment] = []
+
+        name = self.file_parser.get_name()
+        ext = self.file_parser.get_extension()
+        size = str(self.file_parser.get_size())
+
+        metadata = name.encode() + ",".encode() + ext.encode() + ",".encode() + size.encode()
+        metadata_segment = Segment()
+        metadata_segment.set_payload(metadata)
+
+        metadata_segment.set_seq(2)
+        metadata_segment.set_ack(0)
+
+        self.file_segments.append(metadata_segment)
+
+        num_segment = self.file_parser.get_count_segment()
+
+        for i in range(num_segment):
+            segment = Segment()
+            segment.set_payload(self.file_parser.get_chunck(i))
+            segment.set_seq(i + 3)
+            segment.set_ack(3)
+            self.file_segments.append(segment)
 
 if __name__ == "__main__":
     server = Server()
