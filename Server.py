@@ -248,6 +248,35 @@ class Server:
             self.three_way_handshake(client_address)
             self.file_transfer(client_address)
     
+    # -1 = meta include
+    # > -1 = file only
+    def parsefile_limit_window(self, offset: int):
+        self.file_segments: list[Segment] = []
+        segments_size = WINDOW_SIZE
+
+        if offset == -1: 
+            name = self.file_parser.get_name()
+            ext = self.file_parser.get_extension()
+            size = str(self.file_parser.get_size())
+
+            metadata = name.encode() + ",".encode() + ext.encode() + ",".encode() + size.encode()
+            metadata_segment = Segment()
+            metadata_segment.set_payload(metadata)
+
+            metadata_segment.set_seq(2)
+            metadata_segment.set_ack(0)
+
+            self.file_segments.append(metadata_segment)
+            segment_size -= 1
+            offset += 1
+        
+        for i in range(segments_size):
+            segment = Segment()
+            segment.set_payload(self.file_parser.get_chunk(offset + i))
+            segment.set_seq(offset + i + 3)
+            segment.set_ack(3)
+            self.file_segments.append(segment)
+
     def parsefile_to_segments(self):
         self.file_segments: list[Segment] = []
 

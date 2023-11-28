@@ -6,6 +6,7 @@ from .constant import *
 class FileParser:
 
     def __init__(self, path: str, is_server: bool = False):
+        self.seq_buffer: list[int] = []
         self.path: str = path
         if is_server:
             self.file_binary_buffer: BufferedReader = self.parse_file()
@@ -61,7 +62,19 @@ class FileParser:
     def parse_metadata(payload: bytes):
         metadata = payload.decode().split(",")
         return { "name" : metadata[0], "ext": metadata[1], "size": metadata[2] }
-
+    
+    def seq_buff_delete(self, seq: int):
+        try:
+            self.seq_buffer.remove(seq)
+        except:
+            pass
+    
+    def close(self):
+        try: 
+            self.file_binary_buffer.close()
+        except:
+            pass
+    
 if __name__ == "__main__":
     file = FileParser("test\hello.txt")
     print(file.path)
