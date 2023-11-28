@@ -308,7 +308,7 @@ class Server:
             metadata_segment.set_payload(metadata)
 
             metadata_segment.set_seq(2)
-            metadata_segment.set_ack(0)
+            metadata_segment.set_ack(ack)
 
             file_segments.append(metadata_segment)
             segments_size = (
