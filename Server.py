@@ -63,7 +63,6 @@ class Server:
                         print(
                             f"[Error] Received invalid handshake response from client {reply_address[0]}:{reply_address[1]}"
                         )
-                        exit()
             except TimeoutError:
                 print(
                     f"[Error] Timeout Error while waiting for client {address[0]}:{address[1]} SYN-ACK response. Resending SYN request..."
@@ -71,7 +70,9 @@ class Server:
 
     def open_for_request(self):
         # the file size is soon to be change
-        print(f"[!] Source file | {os.path.basename(self.input_path)} | {self.file_parser.get_size()} bytes\n")
+        print(
+            f"[!] Source file | {os.path.basename(self.input_path)} | {self.file_parser.get_size()} bytes\n"
+        )
 
         more_request = True
         while more_request:
@@ -116,10 +117,8 @@ class Server:
                         f"[Segment SEQ={sequence_base + i}] [Client {address[0]}:{address[1]}] Sending segment to client"
                     )
 
-                    self.connection.sendMsg(
-                        file_segments[i].generate_bytes(), address
-                    )
-                    
+                    self.connection.sendMsg(file_segments[i].generate_bytes(), address)
+
             i = 0
             while i < WINDOW_SIZE and sequence_base - 2 < n_segment:
                 try:
@@ -152,7 +151,9 @@ class Server:
                         f"[Segment SEQ={sequence_base}] [Client {address[0]}:{address[1]}] [Timeout] ACK response timeout, resending segment from sequence number {sequence_base}"
                     )
                     break
-        print(f"[!] [Client {address[0]}:{address[1]}] Data transfer finished. Initiate closing connection...")
+        print(
+            f"[!] [Client {address[0]}:{address[1]}] Data transfer finished. Initiate closing connection..."
+        )
 
     def close_connection(self, address):
         """Closing connection with client
@@ -173,7 +174,9 @@ class Server:
             self.connection.sendMsg(self.segment.generate_bytes(), address)
 
             # Waiting for ACK response from client
-            print(f"[Close] [Client {address[0]}:{address[1]}] Waiting client response...")
+            print(
+                f"[Close] [Client {address[0]}:{address[1]}] Waiting client response..."
+            )
             try:
                 # Parse the response
                 reply_segment, reply_address = self.connection.listenMsg()
@@ -244,7 +247,9 @@ class Server:
                 )
                 break
 
-        print(f"[Close] [Client {address[0]}:{address[1]}] Connection closed with client {address[0]}:{address[1]}")
+        print(
+            f"[Close] [Client {address[0]}:{address[1]}] Connection closed with client {address[0]}:{address[1]}"
+        )
 
     def initiate_send_data(self):
         self.parsefile_to_segments()
@@ -252,19 +257,25 @@ class Server:
             self.three_way_handshake(client_address)
             self.send_data(client_address)
             self.close_connection(client_address)
-    
+
     # -1 = meta include
     # > -1 = file only
     def parsefile_limit_window(self, offset: int):
         file_segments: list[Segment] = []
         segments_size = min(WINDOW_SIZE, self.file_parser.get_count_segment())
 
-        if offset == -1: 
+        if offset == -1:
             name = self.file_parser.get_name()
             ext = self.file_parser.get_extension()
             size = str(self.file_parser.get_size())
 
-            metadata = name.encode() + ",".encode() + ext.encode() + ",".encode() + size.encode()
+            metadata = (
+                name.encode()
+                + ",".encode()
+                + ext.encode()
+                + ",".encode()
+                + size.encode()
+            )
             metadata_segment = Segment()
             metadata_segment.set_payload(metadata)
 
@@ -272,16 +283,20 @@ class Server:
             metadata_segment.set_ack(0)
 
             file_segments.append(metadata_segment)
-            segments_size = segments_size if WINDOW_SIZE > self.file_parser.get_count_segment() else segments_size - 1
+            segments_size = (
+                segments_size
+                if WINDOW_SIZE > self.file_parser.get_count_segment()
+                else segments_size - 1
+            )
             offset += 1
-        
+
         for i in range(segments_size):
             segment = Segment()
             segment.set_payload(self.file_parser.get_chunk(offset + i))
             segment.set_seq(offset + i + 3)
             segment.set_ack(3)
             file_segments.append(segment)
-        
+
         return file_segments
 
     def parsefile_to_segments(self):
@@ -291,7 +306,9 @@ class Server:
         ext = self.file_parser.get_extension()
         size = str(self.file_parser.get_size())
 
-        metadata = name.encode() + ",".encode() + ext.encode() + ",".encode() + size.encode()
+        metadata = (
+            name.encode() + ",".encode() + ext.encode() + ",".encode() + size.encode()
+        )
         metadata_segment = Segment()
         metadata_segment.set_payload(metadata)
 
@@ -309,9 +326,9 @@ class Server:
             segment.set_ack(3)
             self.file_segments.append(segment)
 
+
 if __name__ == "__main__":
     server = Server()
     server.open_for_request()
     server.initiate_send_data()
     server.connection.closeSocket()
-
