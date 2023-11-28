@@ -53,7 +53,7 @@ class Client:
                     # exit()
         except TimeoutError:
             print(
-                f"[Error] Timeout Error while waiting for server {reply_address[0]}:{reply_address[1]}. Exiting..."
+                f"[Error] Timeout Error while waiting for server {address[0]}:{address[1]}. Exiting..."
             )
             exit()
 
@@ -136,7 +136,7 @@ class Client:
                     f"[Error] [Server {address[0]}:{address[1]}] Timeout Error while waiting for server. Resending FIN-ACK..."
                 )
 
-        print(f"[Close] [Server {address[0]}:{address[1]}] Connection closed with server")
+        print(f"[Close] [Server {address[0]}:{address[1]}] Connection with server is closed")
         self.connection.closeSocket()
 
     def send_ack(self, seq_num, ack_number):
@@ -147,48 +147,50 @@ class Client:
         # Sequence number 2 : Metadata
         # Sequence number 3++ : Actual data
         file_parser = FileParser(self.output_path)
-        request_number = 3
+        request_number = 2
         while True:
-            segment_in_byte, server_addr = self.connection.listenMsg()
+            segment_in_byte, server_addr = self.connection.listenMsg(LISTEN_TIMEOUT)
             
             if server_addr[1] == self.broadcast_port:
                 self.segment.parse_bytes(segment_in_byte)
 
+                # print(f"checksum value : {self.segment.get_seq()} {self.segment.is_valid_checksum()}. Stored : {self.segment.checksum}, computed: {self.segment.calculate_checksum()}")
                 if not self.segment.is_valid_checksum():
                     # corrupt 
-                    print("corrupt")
-                    pass
+                    print(f"[Segment SEQ={self.segment.get_seq()}] [Server {server_addr[0]}:{server_addr[1]}] Checksum failed, sending previous ACK")
+                    self.send_ack(request_number - 1, request_number - 1)
                 
                 elif self.segment.get_flag().fin and self.segment.get_flag().ack:
-                    # close connection
-                    print(f"[Close] [Server {server_addr[0]}:{server_addr[1]}] Received FIN-ACK")
                     self.close_connection(server_addr, self.segment.get_seq(), self.segment.get_seq())
                     break            
-                
-                elif self.segment.get_seq() == 2:
-                    # parse metadata
-                    metadata = file_parser.parse_metadata(self.segment.get_payload())
-                    print(f"[Segment SEQ={self.segment.get_seq()}] [Server {server_addr[0]}:{server_addr[1]}] Received Filename: {metadata['name']}.{metadata['ext']}, File Size: {metadata['size']} bytes")
-                    self.send_ack(self.segment.get_seq(), self.segment.get_seq())
 
                 elif self.segment.get_seq() == request_number:
-                    # parse payload and write to file
-                    request_number += 1
-                    self.send_ack(self.segment.get_seq(), self.segment.get_seq())
-                    print(f'[Segment SEQ={self.segment.get_seq()}] [Server {server_addr[0]}:{server_addr[1]}] Received, Ack sent')
+                    if request_number == 2:
+                        # if it's metadata
+                        request_number += 1
+                        metadata = file_parser.parse_metadata(self.segment.get_payload())
+                        print(f"[Segment SEQ={self.segment.get_seq()}] [Server {server_addr[0]}:{server_addr[1]}] Received Filename: {metadata['name']}.{metadata['ext']}, File Size: {metadata['size']} bytes")
+                        self.send_ack(self.segment.get_seq(), self.segment.get_seq())                
+
+                    else: 
+                        # parse payload and write to file   
+                        request_number += 1
+                        self.send_ack(self.segment.get_seq(), self.segment.get_seq())
+                        print(f'[Segment SEQ={self.segment.get_seq()}] [Server {server_addr[0]}:{server_addr[1]}] Received, Ack sent')
 
                     payload = self.segment.get_payload()
                     file_parser.write_to_buffer(payload)
                     
                 elif self.segment.get_seq() < request_number:
                     # duplicate
-                    print('test 2')    
-                    pass
+                    print(f"[Segment SEQ={self.segment.get_seq()}] [Server {server_addr[0]}:{server_addr[1]}] [Duplicate] Duplicate segment detected")
 
                 elif self.segment.get_seq() > request_number:
                     # out of order
-                    print('test 3')
-                    pass
+                    print(f"[Segment SEQ={self.segment.get_seq()}] [Server {server_addr[0]}:{server_addr[1]}] [Out-of-order] Sending previous ACK")
+                    self.send_ack(request_number - 1, request_number - 1)
+                    
+
               
 
 if __name__ == "__main__":

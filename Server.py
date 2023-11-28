@@ -107,9 +107,18 @@ class Server:
 
         print(f"[!] [Client {address[0]}:{address[1]}] Initiating data transfer...")
 
+        # ATTENTION uncomment for formulated checksum  error
+        # formulated_checksum_error = 0
         while sequence_base - 2 < n_segment:
+            
             # sending all file within window
             file_segments = self.parsefile_limit_window(sequence_base - 3)
+
+            # ATTENTION uncomment for formulated checksum  error
+            # formulated checksum  error
+            # if formulated_checksum_error % 5 == 0:
+            #     print("checksum altered")
+            #     file_segments[0].set_checksum(9999)
 
             for i in range(WINDOW_SIZE):
                 if sequence_base - 2 + i < n_segment:
@@ -120,6 +129,8 @@ class Server:
                     self.connection.sendMsg(file_segments[i].generate_bytes(), address)
 
             i = 0
+            # ATTENTION uncomment for formulated checksum  error
+            # formulated_checksum_error += 1
             while i < WINDOW_SIZE and sequence_base - 2 < n_segment:
                 try:
                     reply_response, reply_address = self.connection.listenMsg()
@@ -129,7 +140,7 @@ class Server:
 
                         if (
                             response.get_flag().ack
-                            and response.get_seq() == sequence_base
+                            and response.get_ack() == sequence_base
                         ):
                             sequence_base += 1
                             sequence_max += 1
@@ -140,10 +151,11 @@ class Server:
                             print(
                                 f"[Segment SEQ={sequence_base}] [Client {address[0]}:{address[1]}] [FLAG] Recieved Wrong Flag"
                             )
-                        else:
+                        elif response.get_ack() < sequence_base:
                             print(
-                                f"[Segment SEQ={sequence_base}] [Client {address[0]}:{address[1]}] [ACK] Recieved Wrong ACK"
+                                f"[Segment SEQ={sequence_base}] [Client {address[0]}:{address[1]}] [ACK] Not ACKED. Duplicate ACK found. Resending segment from sequence number {sequence_base}"
                             )
+                            break
                         i += 1
 
                 except:

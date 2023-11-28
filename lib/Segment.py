@@ -64,7 +64,6 @@ class Segment:
         return self.calculate_checksum() == self.checksum
 
     def generate_bytes(self) -> bytes:
-        self.checksum = self.calculate_checksum()
         segment = b""
         segment += struct.pack("II", self.seq_num, self.ack_num)
         segment += self.flag.get_flag_bytes()
