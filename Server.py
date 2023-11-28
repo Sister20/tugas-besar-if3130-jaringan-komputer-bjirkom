@@ -19,7 +19,7 @@ class Server:
         self.segment = Segment()
         self.client_list = list()
 
-        self.file_parser = FileParser(self.input_path)
+        self.file_parser = FileParser(self.input_path, True)
 
     # TODO: Resend if timeout
     def three_way_handshake(self, address):
@@ -247,7 +247,7 @@ class Server:
         for client_address in self.client_list:
             self.three_way_handshake(client_address)
             self.file_transfer(client_address)
-
+    
     def parsefile_to_segments(self):
         self.file_segments: list[Segment] = []
 
@@ -268,7 +268,7 @@ class Server:
 
         for i in range(num_segment):
             segment = Segment()
-            segment.set_payload(self.file_parser.get_chunck(i))
+            segment.set_payload(self.file_parser.get_chunk(i))
             segment.set_seq(i + 3)
             segment.set_ack(3)
             self.file_segments.append(segment)
