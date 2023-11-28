@@ -154,17 +154,11 @@ class Client:
             if server_addr[1] == self.broadcast_port:
                 self.segment.parse_bytes(segment_in_byte)
 
-                # print(f"checksum value : {self.segment.get_seq()} {self.segment.is_valid_checksum()}. Stored : {self.segment.checksum}, computed: {self.segment.calculate_checksum()}")
-                if not self.segment.is_valid_checksum():
-                    # corrupt 
-                    print(f"[Segment SEQ={self.segment.get_seq()}] [Server {server_addr[0]}:{server_addr[1]}] Checksum failed, sending previous ACK")
-                    self.send_ack(request_number - 1, request_number - 1)
-                
-                elif self.segment.get_flag().fin and self.segment.get_flag().ack:
+                if self.segment.get_flag().fin and self.segment.get_flag().ack and self.segment.is_valid_checksum():
                     self.close_connection(server_addr, self.segment.get_seq(), self.segment.get_seq())
                     break            
 
-                elif self.segment.get_seq() == request_number:
+                elif self.segment.get_seq() == request_number and self.segment.is_valid_checksum():
                     if request_number == 2:
                         # if it's metadata
                         request_number += 1
@@ -178,17 +172,28 @@ class Client:
                         self.send_ack(self.segment.get_seq(), self.segment.get_seq())
                         print(f'[Segment SEQ={self.segment.get_seq()}] [Server {server_addr[0]}:{server_addr[1]}] Received, Ack sent')
 
-                    payload = self.segment.get_payload()
-                    file_parser.write_to_buffer(payload)
+                        payload = self.segment.get_payload()
+                        file_parser.write_to_buffer(payload)
                     
                 elif self.segment.get_seq() < request_number:
                     # duplicate
-                    print(f"[Segment SEQ={self.segment.get_seq()}] [Server {server_addr[0]}:{server_addr[1]}] [Duplicate] Duplicate segment detected")
+                    # print(request_number)
+                    if self.segment.get_ack() > 5:
+                        print(f"[Segment SEQ={self.segment.get_seq()}] [Server {server_addr[0]}:{server_addr[1]}] [Duplicate] Multiple duplicate segment detected, sending ACK")
+                        self.send_ack(self.segment.get_seq(), self.segment.get_seq())
 
-                elif self.segment.get_seq() > request_number:
+                    print(f"[Segment SEQ={self.segment.get_seq()}] [Server {server_addr[0]}:{server_addr[1]}] [Duplicate] Duplicate segment detected")
+                    
+
+                elif self.segment.get_seq() > request_number and self.segment.is_valid_checksum():
                     # out of order
                     print(f"[Segment SEQ={self.segment.get_seq()}] [Server {server_addr[0]}:{server_addr[1]}] [Out-of-order] Sending previous ACK")
                     self.send_ack(request_number - 1, request_number - 1)
+
+                else:
+                    # corrupt 
+                    print(f"[Segment SEQ={self.segment.get_seq()}] [Server {server_addr[0]}:{server_addr[1]}] Checksum failed, sending previous ACK")
+                    self.send_ack(request_number - 1, request_number - 1)                    
                     
 
               

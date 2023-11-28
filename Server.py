@@ -2,7 +2,7 @@ from lib.Connection import Connection
 from lib.ServerParser import ServerParser
 from lib.Segment import Segment
 from lib.flags import Flags
-from lib.constant import MAX_SEGMENT, LISTEN_TIMEOUT, WINDOW_SIZE
+from lib.constant import LISTEN_TIMEOUT, WINDOW_SIZE
 from lib.FileParser import FileParser
 import os
 
@@ -104,21 +104,22 @@ class Server:
         n_segment = self.file_parser.get_count_segment() + 1
         sequence_base = 2
         sequence_max = sequence_base + WINDOW_SIZE + 1
+        check_ack_lost = {"seq_num": 0, "times": 0}
 
         print(f"[!] [Client {address[0]}:{address[1]}] Initiating data transfer...")
 
         # ATTENTION uncomment for formulated checksum  error
-        # formulated_checksum_error = 0
+        formulated_checksum_error = 0
         while sequence_base - 2 < n_segment:
             
             # sending all file within window
-            file_segments = self.parsefile_limit_window(sequence_base - 3)
+            file_segments = self.parsefile_limit_window(sequence_base - 3, check_ack_lost["times"])
 
             # ATTENTION uncomment for formulated checksum  error
             # formulated checksum  error
-            # if formulated_checksum_error % 5 == 0:
-            #     print("checksum altered")
-            #     file_segments[0].set_checksum(9999)
+            if formulated_checksum_error % 5 == 0:
+                print("checksum altered")
+                file_segments[0].set_checksum(9999)
 
             for i in range(WINDOW_SIZE):
                 if sequence_base - 2 + i < n_segment:
@@ -130,7 +131,7 @@ class Server:
 
             i = 0
             # ATTENTION uncomment for formulated checksum  error
-            # formulated_checksum_error += 1
+            formulated_checksum_error += 1
             while i < WINDOW_SIZE and sequence_base - 2 < n_segment:
                 try:
                     reply_response, reply_address = self.connection.listenMsg()
@@ -138,20 +139,29 @@ class Server:
                         response = Segment()
                         response.parse_bytes(reply_response)
 
-                        if (
+                        if not response.is_valid_checksum():
+                            pass
+
+                        elif (
                             response.get_flag().ack
                             and response.get_ack() == sequence_base
                         ):
-                            sequence_base += 1
-                            sequence_max += 1
+                            sequence_base = response.get_ack() + 1
+                            sequence_max = sequence_base + WINDOW_SIZE + 1
+
+                            if check_ack_lost['seq_num'] != 0:
+                                check_ack_lost['seq_num'] = 0
+                                check_ack_lost["times"] = 0
+                            
                             print(
-                                f"[Segment SEQ={response.get_seq()}] [Client {address[0]}:{address[1]}] [ACK] ACK Received, new sequence base = {sequence_base}"
+                                f"[Segment SEQ={response.get_ack()}] [Client {address[0]}:{address[1]}] [ACK] ACK Received, new sequence base = {sequence_base}"
                             )
                         elif not response.get_flag().ack:
                             print(
                                 f"[Segment SEQ={sequence_base}] [Client {address[0]}:{address[1]}] [FLAG] Recieved Wrong Flag"
                             )
                         elif response.get_ack() < sequence_base:
+                            print(response.get_ack())
                             print(
                                 f"[Segment SEQ={sequence_base}] [Client {address[0]}:{address[1]}] [ACK] Not ACKED. Duplicate ACK found. Resending segment from sequence number {sequence_base}"
                             )
@@ -162,6 +172,12 @@ class Server:
                     print(
                         f"[Segment SEQ={sequence_base}] [Client {address[0]}:{address[1]}] [Timeout] ACK response timeout, resending segment from sequence number {sequence_base}"
                     )
+
+                    if check_ack_lost['seq_num'] != sequence_base:
+                        check_ack_lost['seq_num'] = sequence_base
+                        check_ack_lost["times"] = 1
+                    else:
+                        check_ack_lost['times'] += 1
                     break
         print(
             f"[!] [Client {address[0]}:{address[1]}] Data transfer finished. Initiate closing connection..."
@@ -272,7 +288,7 @@ class Server:
 
     # -1 = meta include
     # > -1 = file only
-    def parsefile_limit_window(self, offset: int):
+    def parsefile_limit_window(self, offset: int, ack: int):
         file_segments: list[Segment] = []
         segments_size = min(WINDOW_SIZE, self.file_parser.get_count_segment())
 
@@ -306,7 +322,7 @@ class Server:
             segment = Segment()
             segment.set_payload(self.file_parser.get_chunk(offset + i))
             segment.set_seq(offset + i + 3)
-            segment.set_ack(3)
+            segment.set_ack(ack)
             file_segments.append(segment)
 
         return file_segments
