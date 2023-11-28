@@ -11,8 +11,9 @@ class FileParser:
         if is_server:
             self.file_binary_buffer: BufferedReader = self.parse_file()
         else:
-            self.file_binary_buffer: BufferedWriter = self.generate_file()
-    
+            if not os.path.exists(self.path):
+                os.makedirs(path)
+            
     def parse_file(self) -> BufferedReader:
         try:
             file = open(f"{self.path}", "rb")
@@ -49,8 +50,9 @@ class FileParser:
     
     def generate_file(self) -> BufferedWriter:
         try:
-            file = open(f"out/{self.get_filename()}", "wb")
+            file = open(self.path, "wb")
             return file
+            
         except FileNotFoundError as err:
             print(f"[!] {err} ")
             print(f"[!] {self.path} does not exists...")
@@ -59,8 +61,10 @@ class FileParser:
     def write_to_buffer(self, payload: bytes):
         self.file_binary_buffer.write(payload)
 
-    def parse_metadata(payload: bytes):
+    def parse_metadata(self, payload: bytes):
         metadata = payload.decode().split(",")
+        self.path += '/' + metadata[0] + "." + metadata[1]
+        self.file_binary_buffer: BufferedWriter = self.generate_file()
         return { "name" : metadata[0], "ext": metadata[1], "size": metadata[2] }
     
     def seq_buff_delete(self, seq: int):
