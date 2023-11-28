@@ -71,11 +71,11 @@ The program consists of a server and a client that communicate over a network us
        docker exec -it $(docker compose ps -q server) sh  // This is for server container
        docker exec -it $(docker compose ps -q client1) sh  // This is for client container
 
-3. Inside the server container, run Server.py with certain arguments
+3. Inside the server container, run Server.py with certain arguments. Make sure that the IP and Port is the same as the one listed in he docker-compose.yml file.
 
        python Server.py [-h] [-bip BROADCAST_IP] [-bp BROADCAST_PORT] [-ip INPUT_PATH]
 
-4. Inside the client container, run Client.py with certain arguments
+4. Inside the client container, run Client.py with certain arguments. Make sure that the IP and Port is the same as the one listed in he docker-compose.yml file.
 
        python Client.py [-h] [-cip CLIENT_IP] [-cp CLIENT_PORT] [-bip BROADCAST_IP] [-bp BROADCAST_PORT] [-op OUTPUT_PATH]
 

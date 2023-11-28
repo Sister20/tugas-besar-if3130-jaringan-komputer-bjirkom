@@ -188,6 +188,12 @@ class Server:
                     else:
                         check_ack_lost['times'] += 1
                     break
+            
+            # break if ack lost than 10 more times
+            if check_ack_lost['times'] >= 10:
+                print(f"[Error] Timeout Error ACK lost more than 10 times")
+                break
+
         print(
             f"[!] [Client {address[0]}:{address[1]}] Data transfer finished. Initiate closing connection..."
         )
@@ -203,7 +209,7 @@ class Server:
         # Sending FIN-ACK to client
         print(f"[Close] [Client {address[0]}:{address[1]}] Closing connection...")
         print(f"[Close] [Client {address[0]}:{address[1]}] Sending FIN-ACK to client")
-
+        timeout_counter = 0
         while True:
             self.last_seq += 1
             self.last_ack += 1
@@ -242,7 +248,11 @@ class Server:
                 print(
                     f"[Error] [Client {address[0]}:{address[1]}] Timeout Error while waiting for client ACK response. Resending FIN-ACK..."
                 )
-
+                timeout_counter += 1
+                if timeout_counter >= 5:
+                    break
+        
+        timeout_counter = 0
         # Waiting for FIN-ACK request from client
         while True:
             try:
@@ -282,6 +292,10 @@ class Server:
                 print(
                     f"[Error] [Client {address[0]}:{address[1]}] Timeout Error while waiting for client FIN-ACK request. Resending ACK..."
                 )
+                timeout_counter += 1
+                if timeout_counter >= 5:
+                    print(f"[Error] Timeout Error more than 5 times. Closing connection...")
+                    break
 
         print(
             f"[Close] [Client {address[0]}:{address[1]}] Connection closed with client {address[0]}:{address[1]}"
