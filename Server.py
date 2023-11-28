@@ -276,6 +276,6 @@ class Server:
 if __name__ == "__main__":
     server = Server()
     server.open_for_request()
-    server.three_way_handshake(("127.0.0.1", 50001))
+    server.three_way_handshake(("127.0.0.1", 3001))
     # server.connection.closeSocket()
-    server.close_connection(("127.0.0.1", 50001))
+    server.close_connection(("127.0.0.1", 3001))
