@@ -10,9 +10,9 @@ import os
 class Server:
     def __init__(self):
         self.parser = ServerParser()
-        self.broadcast_port, self.input_path = self.parser.get_args()
+        self.broadcast_ip, self.broadcast_port, self.input_path = self.parser.get_args()
         self.connection = Connection(
-            ip="127.0.0.1",
+            ip=self.broadcast_ip,
             port=self.broadcast_port,
             is_server=True,
         )
