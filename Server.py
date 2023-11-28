@@ -100,7 +100,7 @@ class Server:
         # Sequence number 2 : Metadata
         # Sequence number 3++ : Actual data
 
-        n_segment = len(self.file_segments)
+        n_segment = self.file_parser.get_count_segment() + 1
         sequence_base = 2
         sequence_max = sequence_base + WINDOW_SIZE + 1
 
@@ -108,46 +108,50 @@ class Server:
 
         while sequence_base - 2 < n_segment:
             # sending all file within window
-            for i in range(WINDOW_SIZE + 1):
+            file_segments = self.parsefile_limit_window(sequence_base - 3)
+
+            for i in range(WINDOW_SIZE):
                 if sequence_base - 2 + i < n_segment:
                     print(
                         f"[Segment SEQ={sequence_base + i}] [Client {address[0]}:{address[1]}] Sending segment to client"
                     )
 
                     self.connection.sendMsg(
-                        self.file_segments[sequence_base - 2 + i].generate_bytes(), address
+                        file_segments[i].generate_bytes(), address
                     )
-
-            for i in range(WINDOW_SIZE + 1):
+                    
+            i = 0
+            while i < WINDOW_SIZE and sequence_base - 2 < n_segment:
                 try:
-                    while sequence_base - 2 < n_segment:
-                        reply_response, reply_address = self.connection.listenMsg()
-                        if reply_address == address:
-                            response = Segment()
-                            response.parse_bytes(reply_response)
+                    reply_response, reply_address = self.connection.listenMsg()
+                    if reply_address == address:
+                        response = Segment()
+                        response.parse_bytes(reply_response)
 
-                            if (
-                                response.get_flag().ack
-                                and response.get_seq() == sequence_base
-                            ):
-                                sequence_base += 1
-                                sequence_max += 1
-                                print(
-                                    f"[Segment SEQ={response.get_seq()}] [Client {address[0]}:{address[1]}] [ACK] ACK Received, new sequence base = {sequence_base}"
-                                )
-                            elif not response.get_flag().ack:
-                                print(
-                                    f"[Segment SEQ={sequence_base}] [Client {address[0]}:{address[1]}] [FLAG] Recieved Wrong Flag"
-                                )
-                            else:
-                                print(
-                                    f"[Segment SEQ={sequence_base}] [Client {address[0]}:{address[1]}] [ACK] Recieved Wrong ACK"
-                                )
+                        if (
+                            response.get_flag().ack
+                            and response.get_seq() == sequence_base
+                        ):
+                            sequence_base += 1
+                            sequence_max += 1
+                            print(
+                                f"[Segment SEQ={response.get_seq()}] [Client {address[0]}:{address[1]}] [ACK] ACK Received, new sequence base = {sequence_base}"
+                            )
+                        elif not response.get_flag().ack:
+                            print(
+                                f"[Segment SEQ={sequence_base}] [Client {address[0]}:{address[1]}] [FLAG] Recieved Wrong Flag"
+                            )
+                        else:
+                            print(
+                                f"[Segment SEQ={sequence_base}] [Client {address[0]}:{address[1]}] [ACK] Recieved Wrong ACK"
+                            )
+                        i += 1
 
                 except:
                     print(
-                        f"[Segment SEQ={sequence_base}] [Client {address[0]}:{address[1]}] [Timeout] ACK response timeout, resending sequence number {sequence_base}"
+                        f"[Segment SEQ={sequence_base}] [Client {address[0]}:{address[1]}] [Timeout] ACK response timeout, resending segment from sequence number {sequence_base}"
                     )
+                    break
         print(f"[!] [Client {address[0]}:{address[1]}] Data transfer finished. Initiate closing connection...")
 
     def close_connection(self, address):
@@ -252,8 +256,8 @@ class Server:
     # -1 = meta include
     # > -1 = file only
     def parsefile_limit_window(self, offset: int):
-        self.file_segments: list[Segment] = []
-        segments_size = WINDOW_SIZE
+        file_segments: list[Segment] = []
+        segments_size = min(WINDOW_SIZE, self.file_parser.get_count_segment())
 
         if offset == -1: 
             name = self.file_parser.get_name()
@@ -267,8 +271,8 @@ class Server:
             metadata_segment.set_seq(2)
             metadata_segment.set_ack(0)
 
-            self.file_segments.append(metadata_segment)
-            segment_size -= 1
+            file_segments.append(metadata_segment)
+            segments_size = segments_size if WINDOW_SIZE > self.file_parser.get_count_segment() else segments_size - 1
             offset += 1
         
         for i in range(segments_size):
@@ -276,7 +280,9 @@ class Server:
             segment.set_payload(self.file_parser.get_chunk(offset + i))
             segment.set_seq(offset + i + 3)
             segment.set_ack(3)
-            self.file_segments.append(segment)
+            file_segments.append(segment)
+        
+        return file_segments
 
     def parsefile_to_segments(self):
         self.file_segments: list[Segment] = []

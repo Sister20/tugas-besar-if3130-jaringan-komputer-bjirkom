@@ -154,7 +154,7 @@ class Client:
             if server_addr[1] == self.broadcast_port:
                 self.segment.parse_bytes(segment_in_byte)
 
-                if self.segment.checksum != self.segment.calculate_checksum():
+                if not self.segment.is_valid_checksum():
                     # corrupt 
                     print("corrupt")
                     pass
