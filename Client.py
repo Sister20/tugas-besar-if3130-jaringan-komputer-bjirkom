@@ -105,7 +105,7 @@ class Client:
 
         print(f"[Close] [Server {address[0]}:{address[1]}] Sending FIN-ACK to server")
         while True:
-            self.segment = Flags.fin_ack(seq_num, ack_num)
+            self.segment = Flags.fin_ack(seq_num + 1, ack_num + 1)
             self.connection.sendMsg(self.segment.generate_bytes(), address)
             try:
                 # Waiting for ACK from server
@@ -153,7 +153,7 @@ class Client:
                 self.segment.parse_bytes(segment_in_byte)
 
                 if self.segment.get_flag().fin and self.segment.get_flag().ack and self.segment.is_valid_checksum():
-                    self.close_connection(server_addr, self.segment.get_seq(), self.segment.get_seq())
+                    self.close_connection(server_addr, self.segment.get_seq(), self.segment.get_ack())
                     break            
 
                 elif self.segment.get_seq() == request_number and self.segment.is_valid_checksum():

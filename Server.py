@@ -20,6 +20,8 @@ class Server:
         self.client_list = list()
 
         self.file_parser = FileParser(self.input_path, True)
+        self.last_ack = 0
+        self.last_seq = 0
 
     def ask_parallelization(self):
         choice = input(
@@ -134,8 +136,9 @@ class Server:
                     print(
                         f"[Segment SEQ={sequence_base + i}] [Client {address[0]}:{address[1]}] Sending segment to client"
                     )
-
+                    
                     self.connection.sendMsg(file_segments[i].generate_bytes(), address)
+                    self.last_seq = file_segments[i].get_seq()
 
             i = 0
             while i < WINDOW_SIZE and sequence_base - 2 < n_segment:
@@ -152,6 +155,7 @@ class Server:
                             response.get_flag().ack
                             and response.get_ack() == sequence_base
                         ):
+                            self.last_ack = response.get_ack()
                             sequence_base = response.get_ack() + 1
                             sequence_max = sequence_base + WINDOW_SIZE + 1
 
@@ -201,9 +205,11 @@ class Server:
         print(f"[Close] [Client {address[0]}:{address[1]}] Sending FIN-ACK to client")
 
         while True:
+            self.last_seq += 1
+            self.last_ack += 1
             self.segment = Flags.fin_ack(
-                seq_num=100, ack_num=300
-            )  # TODO: change the sequence number and ack num
+                seq_num=self.last_seq, ack_num=self.last_ack
+            )
             self.connection.sendMsg(self.segment.generate_bytes(), address)
 
             # Waiting for ACK response from client
@@ -259,7 +265,7 @@ class Server:
                         # Sequence number ___ : ACK flag
                         self.segment = Flags.ack(
                             seq_num=101, ack_num=101
-                        )  # TODO: change the sequence number and ack num
+                        )
                         self.connection.sendMsg(self.segment.generate_bytes(), address)
                         break
                     else:
