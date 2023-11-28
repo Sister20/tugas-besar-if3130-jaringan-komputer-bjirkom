@@ -45,12 +45,10 @@ class Client:
                         print(
                             f"[Handshake] Received invalid handshake response from client {reply_address[0]}:{reply_address[1]})."
                         )
-                        # exit()
                 else:
                     print(
                         f"[Handshake] Received from unknown address {reply_address[0]}:{reply_address[1]})."
                     )
-                    # exit()
         except TimeoutError:
             print(
                 f"[Error] Timeout Error while waiting for server {address[0]}:{address[1]}. Exiting..."
@@ -107,7 +105,7 @@ class Client:
 
         print(f"[Close] [Server {address[0]}:{address[1]}] Sending FIN-ACK to server")
         while True:
-            self.segment = Flags.fin_ack(seq_num, ack_num)  # TODO: change seq_num and ack_num
+            self.segment = Flags.fin_ack(seq_num, ack_num)
             self.connection.sendMsg(self.segment.generate_bytes(), address)
             try:
                 # Waiting for ACK from server

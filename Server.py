@@ -35,7 +35,6 @@ class Server:
         else:
             self.is_parallel = False
 
-    # TODO: Resend if timeout
     def three_way_handshake(self, address):
         # Sending SYN requests to client
         print(
@@ -125,18 +124,10 @@ class Server:
 
         print(f"[!] [Client {address[0]}:{address[1]}] Initiating data transfer...")
 
-        # ATTENTION uncomment for formulated checksum  error
-        # formulated_checksum_error = 0
         while sequence_base - 2 < n_segment:
             
             # sending all file within window
             file_segments = self.parsefile_limit_window(sequence_base - 3, check_ack_lost["times"])
-
-            # ATTENTION uncomment for formulated checksum  error
-            # formulated checksum  error
-            # if formulated_checksum_error % 5 == 0:
-            #     print("checksum altered")
-            #     file_segments[0].set_checksum(9999)
 
             for i in range(WINDOW_SIZE):
                 if sequence_base - 2 + i < n_segment:
@@ -147,8 +138,6 @@ class Server:
                     self.connection.sendMsg(file_segments[i].generate_bytes(), address)
 
             i = 0
-            # ATTENTION uncomment for formulated checksum  error
-            # formulated_checksum_error += 1
             while i < WINDOW_SIZE and sequence_base - 2 < n_segment:
                 try:
                     reply_response, reply_address = self.connection.listenMsg()
