@@ -178,7 +178,7 @@ class Client:
                 elif self.segment.get_seq() < request_number:
                     # duplicate
                     # print(request_number)
-                    if self.segment.get_ack() > 5:
+                    if self.segment.get_ack() > 3:
                         print(f"[Segment SEQ={self.segment.get_seq()}] [Server {server_addr[0]}:{server_addr[1]}] [Duplicate] Multiple duplicate segment detected, sending ACK")
                         self.send_ack(self.segment.get_seq(), self.segment.get_seq())
 

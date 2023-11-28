@@ -152,9 +152,6 @@ class Server:
             while i < WINDOW_SIZE and sequence_base - 2 < n_segment:
                 try:
                     reply_response, reply_address = self.connection.listenMsg()
-                    test = Segment()
-                    test.parse_bytes(reply_response)
-                    print(test.get_ack())
                     if reply_address == address:
                         response = Segment()
                         response.parse_bytes(reply_response)
@@ -181,7 +178,6 @@ class Server:
                                 f"[Segment SEQ={sequence_base}] [Client {address[0]}:{address[1]}] [FLAG] Recieved Wrong Flag"
                             )
                         elif response.get_ack() < sequence_base:
-                            print(response.get_ack())
                             print(
                                 f"[Segment SEQ={sequence_base}] [Client {address[0]}:{address[1]}] [ACK] Not ACKED. Duplicate ACK found. Resending segment from sequence number {sequence_base}"
                             )
@@ -298,7 +294,6 @@ class Server:
         )
 
     def establish_send_close_connection(self, address):
-        print("test 1")
         self.three_way_handshake(address)
         self.send_data(address)
         self.close_connection(address)
@@ -306,11 +301,8 @@ class Server:
     def initiate_send_data(self):
         if self.is_parallel:
             while True:
-                print("test 4")
                 _, client_address = self.connection_parallel.listenMsg(LISTEN_TIMEOUT)
-                print("test 2")
                 if client_address not in self.client_list:
-                    print("test 3")
                     self.client_list.append(client_address)
                     threading.Thread(target=self.establish_send_close_connection, args=(client_address,)).start()
         else:
