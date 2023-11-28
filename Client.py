@@ -103,6 +103,8 @@ class Client:
 
         self.send_ack(seq_num, ack_num)
 
+        timeout_counter = 0
+
         print(f"[Close] [Server {address[0]}:{address[1]}] Sending FIN-ACK to server")
         while True:
             self.segment = Flags.fin_ack(seq_num + 1, ack_num + 1)
@@ -133,6 +135,10 @@ class Client:
                 print(
                     f"[Error] [Server {address[0]}:{address[1]}] Timeout Error while waiting for server. Resending FIN-ACK..."
                 )
+                timeout_counter += 1
+                if (timeout_counter == 5):
+                    print(f"[Error] [Server {address[0]}:{address[1]}] Timeout Error while waiting for server. Closing connection...")
+                    break
 
         print(f"[Close] [Server {address[0]}:{address[1]}] Connection with server is closed")
         self.connection.closeSocket()

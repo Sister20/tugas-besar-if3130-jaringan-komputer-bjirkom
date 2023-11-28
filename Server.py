@@ -280,9 +280,8 @@ class Server:
                     continue
             except TimeoutError:
                 print(
-                    f"[Error] [Client {address[0]}:{address[1]}] Timeout Error while waiting for client FIN-ACK request. Froce closing..."
+                    f"[Error] [Client {address[0]}:{address[1]}] Timeout Error while waiting for client FIN-ACK request. Resending ACK..."
                 )
-                break
 
         print(
             f"[Close] [Client {address[0]}:{address[1]}] Connection closed with client {address[0]}:{address[1]}"
