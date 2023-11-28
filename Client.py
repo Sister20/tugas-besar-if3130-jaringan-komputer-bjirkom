@@ -9,9 +9,9 @@ from lib.constant import *
 class Client:
     def __init__(self):
         self.parser = ClientParser()
-        self.client_port, self.broadcast_port, self.output_path = self.parser.get_args()
+        self.client_ip, self.client_port, self.broadcast_ip, self.broadcast_port, self.output_path = self.parser.get_args()
         self.connection = Connection(
-            ip="127.0.0.1",
+            ip=self.client_ip,
             port=self.client_port,
             is_server=False,
         )
@@ -20,7 +20,7 @@ class Client:
     def three_way_handshake(self):
         try:
             # Waiting for SYN flag from server
-            address = ("127.0.0.1", self.broadcast_port)
+            address = (self.broadcast_ip, self.broadcast_port)
             print("[Handshake] Waiting for server...")
 
             while True:
@@ -93,7 +93,7 @@ class Client:
 
     def send_request(self):
         self.connection.sendMsg(
-            self.segment.generate_bytes(), ("127.0.0.1", self.broadcast_port)
+            self.segment.generate_bytes(), (self.broadcast_ip, self.broadcast_port)
         )
 
     def close_connection(self, address, seq_num, ack_num):
@@ -141,7 +141,7 @@ class Client:
 
     def send_ack(self, seq_num, ack_number):
         response = Flags.ack(seq_num, ack_number)
-        self.connection.sendMsg(response.generate_bytes(), ("127.0.0.1", self.broadcast_port))        
+        self.connection.sendMsg(response.generate_bytes(), (self.broadcast_ip, self.broadcast_port))        
 
     def receive_data(self):
         # Sequence number 2 : Metadata
