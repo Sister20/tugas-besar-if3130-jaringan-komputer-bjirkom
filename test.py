@@ -12,7 +12,7 @@ for i in range(num_seg):
     print(segment)
     segments.append(segment)
 
-file_write = FileParser("out\hasil.md")
+file_write = FileParser("out")
 
 for i in range(num_seg):
     file_write.write_to_buffer(segments[i].get_payload())

@@ -25,9 +25,9 @@ class Server:
     def three_way_handshake(self, address):
         # Sending SYN requests to client
         print(
-            f"[Handshake] Initiating three way handshake with client {address[0]}:{address[1]}"
+            f"[Handshake] [{address[0]}:{address[1]}] Initiating three way handshake with client "
         )
-        print(f"[Handshake] Sending SYN request to client {address[0]}:{address[1]}")
+        print(f"[Handshake] [{address[0]}:{address[1]}] Sending SYN request to client")
 
         while True:
             # Sequence number 0 : SYN flag
@@ -71,7 +71,7 @@ class Server:
 
     def open_for_request(self):
         # the file size is soon to be change
-        print(f"[!] Source file | {os.path.basename(self.input_path)} | {999} bytes\n")
+        print(f"[!] Source file | {os.path.basename(self.input_path)} | {self.file_parser.get_size()} bytes\n")
 
         more_request = True
         while more_request:
@@ -100,28 +100,27 @@ class Server:
         # Sequence number 2 : Metadata
         # Sequence number 3++ : Actual data
 
-        n_segment = len(self.segment_list)
+        n_segment = len(self.file_segments)
         sequence_base = 2
         sequence_max = sequence_base + WINDOW_SIZE + 1
 
         print(f"[!] [Client {address[0]}:{address[1]}] Initiating data transfer...")
 
-        while sequence_base < n_segment:
+        while sequence_base - 2 < n_segment:
             # sending all file within window
             for i in range(WINDOW_SIZE + 1):
-                if sequence_base + i < n_segment:
+                if sequence_base - 2 + i < n_segment:
                     print(
-                        f"[!] [Client {address[0]}:{address[1]}] [Num={sequence_base + i}] Sending segment to client"
+                        f"[Segment SEQ={sequence_base + i}] [Client {address[0]}:{address[1]}] Sending segment to client"
                     )
 
-                    # TODO: Check if the segmet list is the right variable
                     self.connection.sendMsg(
-                        self.segment_list[sequence_base + i].generate_bytes(), address
+                        self.file_segments[sequence_base - 2 + i].generate_bytes(), address
                     )
 
             for i in range(WINDOW_SIZE + 1):
                 try:
-                    while True:
+                    while sequence_base - 2 < n_segment:
                         reply_response, reply_address = self.connection.listenMsg()
                         if reply_address == address:
                             response = Segment()
@@ -134,21 +133,22 @@ class Server:
                                 sequence_base += 1
                                 sequence_max += 1
                                 print(
-                                    f"[!] [Client {address[0]}:{address[1]}] [ACK] ACK Received, new sequence base = {sequence_base}"
+                                    f"[Segment SEQ={response.get_seq()}] [Client {address[0]}:{address[1]}] [ACK] ACK Received, new sequence base = {sequence_base}"
                                 )
                             elif not response.get_flag().ack:
                                 print(
-                                    f"[!] [Client {address[0]}:{address[1]}] [FLAG] Recieved Wrong Flag"
+                                    f"[Segment SEQ={sequence_base}] [Client {address[0]}:{address[1]}] [FLAG] Recieved Wrong Flag"
                                 )
                             else:
                                 print(
-                                    f"[!] [Client {address[0]}:{address[1]}] [ACK] Recieved Wrong ACK"
+                                    f"[Segment SEQ={sequence_base}] [Client {address[0]}:{address[1]}] [ACK] Recieved Wrong ACK"
                                 )
 
                 except:
                     print(
-                        f"[!] [Client {address[0]}:{address[1]}] [Timeout] ACK response timeout, resending sequence number {sequence_base}"
+                        f"[Segment SEQ={sequence_base}] [Client {address[0]}:{address[1]}] [Timeout] ACK response timeout, resending sequence number {sequence_base}"
                     )
+        print(f"[!] [Client {address[0]}:{address[1]}] Data transfer finished. Initiate closing connection...")
 
     def close_connection(self, address):
         """Closing connection with client
@@ -159,8 +159,8 @@ class Server:
             Client address
         """
         # Sending FIN-ACK to client
-        print("[Close] Closing connection...")
-        print(f"[Close] Sending FIN-ACK to client {address[0]}:{address[1]}")
+        print(f"[Close] [Client {address[0]}:{address[1]}] Closing connection...")
+        print(f"[Close] [Client {address[0]}:{address[1]}] Sending FIN-ACK to client")
 
         while True:
             self.segment = Flags.fin_ack(
@@ -169,7 +169,7 @@ class Server:
             self.connection.sendMsg(self.segment.generate_bytes(), address)
 
             # Waiting for ACK response from client
-            print("[Close] Waiting client response...")
+            print(f"[Close] [Client {address[0]}:{address[1]}] Waiting client response...")
             try:
                 # Parse the response
                 reply_segment, reply_address = self.connection.listenMsg()
@@ -179,24 +179,24 @@ class Server:
                 if reply_address[1] == address[1]:
                     if self.segment.get_flag().ack:
                         print(
-                            f"[Close] Received ACK flag from client {address[0]}:{address[1]}"
+                            f"[Close] [Client {address[0]}:{address[1]}] Received ACK flag from client"
                         )
                         break
                     else:
                         print(
-                            f"[Error] Received invalid closing response from client {reply_address[0]}:{reply_address[1]}"
+                            f"[Error] [Client {address[0]}:{address[1]}] Received invalid closing response from client"
                         )
                         exit()
                 else:
                     print(
-                        f"[Error] Received from unknown address {reply_address[0]}:{reply_address[1]}"
+                        f"[Error] [Client {address[0]}:{address[1]}] Received from unknown address"
                     )
                     exit()
 
             except TimeoutError:
                 # Resend if timeout
                 print(
-                    f"[Error] Timeout Error while waiting for client {address[0]}:{address[1]} ACK response. Resending FIN-ACK..."
+                    f"[Error] [Client {address[0]}:{address[1]}] Timeout Error while waiting for client ACK response. Resending FIN-ACK..."
                 )
 
         # Waiting for FIN-ACK request from client
@@ -210,12 +210,12 @@ class Server:
                 if req_address[1] == address[1]:
                     if self.segment.get_flag().fin and self.segment.get_flag().ack:
                         print(
-                            f"[Close] Received FIN-ACK flag from client {address[0]}:{address[1]}"
+                            f"[Close] [Client {address[0]}:{address[1]}] Received FIN-ACK flag from client"
                         )
 
                         # Sending ACK response to client
                         print(
-                            f"[Close] Sending ACK response to client {address[0]}:{address[1]}"
+                            f"[Close] [Client {address[0]}:{address[1]}] Sending ACK response to client"
                         )
 
                         # Sequence number ___ : ACK flag
@@ -226,27 +226,28 @@ class Server:
                         break
                     else:
                         print(
-                            f"[Error] Received invalid closing response from client {req_address[0]}:{req_address[1]}"
+                            f"[Error] [Client {address[0]}:{address[1]}] Received invalid closing response from client"
                         )
                         continue
                 else:
                     print(
-                        f"[Error] Received from unknown address {req_address[0]}:{req_address[1]}"
+                        f"[Error] [Client {address[0]}:{address[1]}] Received from unknown address"
                     )
                     continue
             except TimeoutError:
                 print(
-                    f"[Error] Timeout Error while waiting for client {address[0]}:{address[1]} FIN-ACK request. Exiting..."
+                    f"[Error] [Client {address[0]}:{address[1]}] Timeout Error while waiting for client FIN-ACK request. Froce closing..."
                 )
-                exit()
+                break
 
-        self.connection.closeSocket()
-        print(f"[Close] Connection closed with client {address[0]}:{address[1]}")
+        print(f"[Close] [Client {address[0]}:{address[1]}] Connection closed with client {address[0]}:{address[1]}")
 
     def initiate_send_data(self):
+        self.parsefile_to_segments()
         for client_address in self.client_list:
             self.three_way_handshake(client_address)
-            self.file_transfer(client_address)
+            self.send_data(client_address)
+            self.close_connection(client_address)
     
     def parsefile_to_segments(self):
         self.file_segments: list[Segment] = []
@@ -276,6 +277,6 @@ class Server:
 if __name__ == "__main__":
     server = Server()
     server.open_for_request()
-    server.three_way_handshake(("127.0.0.1", 3001))
-    # server.connection.closeSocket()
-    server.close_connection(("127.0.0.1", 3001))
+    server.initiate_send_data()
+    server.connection.closeSocket()
+

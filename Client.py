@@ -1,5 +1,6 @@
 from lib.Connection import Connection
 from lib.ClientParser import ClientParser
+from lib.FileParser import FileParser
 from lib.Segment import Segment
 from lib.flags import Flags
 from lib.constant import *
@@ -84,7 +85,7 @@ class Client:
                         self.connection.sendMsg(self.segment.generate_bytes(), address)
             except TimeoutError:
                 print(
-                    f"[Error] Timeout Error while waiting for server {reply_address[0]}:{reply_address[1]}. Resending SYN-ACK..."
+                    f"[Error] Timeout Error while waiting for server {address[0]}:{address[1]}. Resending SYN-ACK..."
                 )
                 # Resending SYN-ACK
                 self.segment = Flags.syn_ack(seq_num=1, ack_num=0)
@@ -95,62 +96,19 @@ class Client:
             self.segment.generate_bytes(), ("127.0.0.1", self.broadcast_port)
         )
 
-    def close_connection(self):
+    def close_connection(self, address, seq_num, ack_num):
         """Closing connection with server"""
-        print("[Close] Closing connection with server...")
-        print("[Close] Waiting for FIN-ACK from server...")
-        address = ("127.0.0.1", self.broadcast_port)
+        print(f"[Close] [Server {address[0]}:{address[1]}] Received FIN-ACK from server")
+
+        # Sending ACK to server
+        print(f"[Close] [Server {address[0]}:{address[1]}] Sending ACK to server")
+
+        self.send_ack(seq_num, ack_num)
+
+        print(f"[Close] [Server {address[0]}:{address[1]}] Sending FIN-ACK to server")
         while True:
-            try:
-                # Waiting for FIN-ACK from server
-                req_segment, req_address = self.connection.listenMsg()
-                self.segment.parse_bytes(req_segment)
-
-                # Check the request is appropriate
-                if req_address[1] == self.broadcast_port:
-                    if self.segment.get_flag().fin and self.segment.get_flag().ack:
-                        print(
-                            f"[Close] Received FIN-ACK from server {req_address[0]}:{req_address[1]}"
-                        )
-
-                        # Sending ACK to server
-                        print(
-                            f"[Close] Sending ACK to server {req_address[0]}:{req_address[1]}"
-                        )
-
-                        self.segment = Flags.ack(
-                            seq_num=300, ack_num=101
-                        )  # TODO: change seq_num and ack_num
-                        self.connection.sendMsg(
-                            self.segment.generate_bytes(),
-                            ("127.0.0.1", self.broadcast_port),
-                        )
-                        break
-                    else:
-                        # Wait for valid response
-                        print(
-                            f"[Close] Received invalid closing response from server {req_address[0]}:{req_address[1]}, waiting for another response..."
-                        )
-                else:
-                    # Wait for valid response
-                    print(
-                        f"[Close] Received from unknown address {req_address[0]}:{req_address[1]}, waiting for another response..."
-                    )
-            except TimeoutError:
-                print(
-                    f"[Error] Timeout Error while waiting for server {req_address[0]}:{req_address[1]}. Exiting..."
-                )
-                self.connection.closeSocket()
-                exit()
-
-        print(f"[Close] Sending FIN-ACK to server {address[0]}:{address[1]}")
-        while True:
-            self.segment = Flags.fin_ack(
-                seq_num=300, ack_num=101
-            )  # TODO: change seq_num and ack_num
-            self.connection.sendMsg(
-                self.segment.generate_bytes(), ("127.0.0.1", self.broadcast_port)
-            )
+            self.segment = Flags.fin_ack(seq_num, ack_num)  # TODO: change seq_num and ack_num
+            self.connection.sendMsg(self.segment.generate_bytes(), address)
             try:
                 # Waiting for ACK from server
                 reply_segment, reply_address = self.connection.listenMsg()
@@ -160,58 +118,81 @@ class Client:
                 if reply_address[1] == self.broadcast_port:
                     if self.segment.get_flag().ack:
                         print(
-                            f"[Close] Received ACK from server {reply_address[0]}:{reply_address[1]}"
+                            f"[Close] [Server {address[0]}:{address[1]}] Received ACK from server"
                         )
                         break
                     else:
                         # Wait for valid response
                         print(
-                            f"[Close] Received invalid closing response from server {reply_address[0]}:{reply_address[1]}, waiting for another response..."
+                            f"[Close] [Server {address[0]}:{address[1]}] Received invalid closing response from server, waiting for another response..."
                         )
                 else:
                     # Wait for valid response
                     print(
-                        f"[Close] Received from unknown address {reply_address[0]}:{reply_address[1]}, waiting for another response..."
+                        f"[Close] [Server {address[0]}:{address[1]}] Received from unknown address, waiting for another response..."
                     )
             except TimeoutError:
                 print(
-                    f"[Error] Timeout Error while waiting for server {address[0]}:{address[1]}. Resending FIN-ACK..."
+                    f"[Error] [Server {address[0]}:{address[1]}] Timeout Error while waiting for server. Resending FIN-ACK..."
                 )
 
-        print(f"[Close] Connection closed with server {address[0]}:{address[1]}")
+        print(f"[Close] [Server {address[0]}:{address[1]}] Connection closed with server")
         self.connection.closeSocket()
+
+    def send_ack(self, seq_num, ack_number):
+        response = Flags.ack(seq_num, ack_number)
+        self.connection.sendMsg(response.generate_bytes(), ("127.0.0.1", self.broadcast_port))        
 
     def receive_data(self):
         # Sequence number 2 : Metadata
         # Sequence number 3++ : Actual data
+        file_parser = FileParser(self.output_path)
         request_number = 3
         while True:
             segment_in_byte, server_addr = self.connection.listenMsg()
+            
             if server_addr[1] == self.broadcast_port:
                 self.segment.parse_bytes(segment_in_byte)
 
-                if not self.segment.checksum():
+                if self.segment.checksum != self.segment.calculate_checksum():
                     # corrupt 
+                    print("corrupt")
                     pass
-                if self.segment.get_ack() == 2:
-                    # parse metadata
-                    pass
-                elif self.segment.get_ack() == request_number:
-                    payload = self.segment.get_payload()
-                    # parse payload and write to file
-                elif self.segment.get_flag().fin:
+                
+                elif self.segment.get_flag().fin and self.segment.get_flag().ack:
                     # close connection
-                    pass
-                elif self.segment.get_ack() < request_number:
+                    print(f"[Close] [Server {server_addr[0]}:{server_addr[1]}] Received FIN-ACK")
+                    self.close_connection(server_addr, self.segment.get_seq(), self.segment.get_seq())
+                    break            
+                
+                elif self.segment.get_seq() == 2:
+                    # parse metadata
+                    metadata = file_parser.parse_metadata(self.segment.get_payload())
+                    print(f"[Segment SEQ={self.segment.get_seq()}] [Server {server_addr[0]}:{server_addr[1]}] Received Filename: {metadata['name']}.{metadata['ext']}, File Size: {metadata['size']} bytes")
+                    self.send_ack(self.segment.get_seq(), self.segment.get_seq())
+
+                elif self.segment.get_seq() == request_number:
+                    # parse payload and write to file
+                    request_number += 1
+                    self.send_ack(self.segment.get_seq(), self.segment.get_seq())
+                    print(f'[Segment SEQ={self.segment.get_seq()}] [Server {server_addr[0]}:{server_addr[1]}] Received, Ack sent')
+
+                    payload = self.segment.get_payload()
+                    file_parser.write_to_buffer(payload)
+                    
+                elif self.segment.get_seq() < request_number:
                     # duplicate
+                    print('test 2')    
                     pass
-                elif self.segment.get > request_number:
+
+                elif self.segment.get_seq() > request_number:
                     # out of order
+                    print('test 3')
                     pass
+              
 
 if __name__ == "__main__":
     client = Client()
     client.send_request()
     client.three_way_handshake()
-    # client.connection.closeSocket()
-    client.close_connection()
+    client.receive_data()
