@@ -25,7 +25,6 @@ class Flags:
         syn_ack_segment.set_ack(ack_num)
         return syn_ack_segment
 
-    # TODO: implement fin and fin_ack
     @staticmethod
     def fin(seq_num: int) -> Segment:
         fin_segment = Segment()
