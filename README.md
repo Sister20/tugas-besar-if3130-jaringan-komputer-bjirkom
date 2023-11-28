@@ -1,3 +1,9 @@
+---
+runme:
+  id: 01HGB3X926CP0DBJJ858ASX5W7
+  version: v2.0
+---
+
 <div align="center">
     <h1>
         TUGAS BESAR IF3130 - Jaringan Komputer 2023 - BJIRKOM 
@@ -10,54 +16,68 @@
 
 ## DESCRIPTION
 
-The program consists of a <b>server</b> and a <b>client</b> that communicate over a network using a <b>"TCP-Like"</b> protocol created from scratch. It uses and runs over the UDP protocol to send data, implementing a <b>Three Way Handshake</b>, <b>CRC Checksum</b>, <b>Optimize Buffer</b> and <b>Automatic Repeat Request (ARQ) Go-Back-N</b>. The program uses Python 3 and built-in libraries such as socket, struct, io, etc.
+The program consists of a server and a client that communicate over a network using a "TCP-Like" protocol created from scratch. It uses and runs over the UDP protocol to send data, implementing a Three Way Handshake, CRC Checksum, Optimize Buffer and Automatic Repeat Request (ARQ) Go-Back-N. The program uses Python 3 and built-in libraries such as socket, struct, io, etc.
 
 ## FEATURE
 
--   Three Way Handshake
--   File Transfer with Automatic Repeat Request (ARQ) Go-Back-N
--   Optimize Buffer
--   Metadata
--   Parallelization
--   Two end device communication (Virtual with Docker)
+- Three Way Handshake
+- File Transfer with Automatic Repeat Request (ARQ) Go-Back-N
+- Optimize Buffer
+- Metadata
+- Parallelization
+- Two end device communication (Virtual with Docker)
 
 ## REQUIREMENTS
 
--   Python 3
--   Docker
+- Python 3.10 (minimal)
+- Docker
 
 ## HOW TO RUN
 
-### A. Basic File Transfer
+### A. Basic File Transfer (localhost)
 
-1.  Make sure the files to be sent are available
-2.  Run Server with certain arguments
+1. Make sure the files to be sent are available
+2. Run Server with certain arguments
 
-        python3 Server.py
+       python Server.py [-h] [-bip BROADCAST_IP] [-bp BROADCAST_PORT] [-ip INPUT_PATH]
+       
+   Example:
 
-3.  Run Client with certain arguments (<i>Make sure broadcast port and clients port are different</i>)
+       python Server.py -bip 127.0.0.1 -bp 3001 -ip ./test/video.mkv
 
-        python3 Client.py
+3. Run Client with certain arguments (Make sure broadcast port and clients port are different)
 
-4.  If transfer is succesful, file will be written in folder `out`
+       python Client.py [-h] [-cip CLIENT_IP] [-cp CLIENT_PORT] [-bip BROADCAST_IP] [-bp BROADCAST_PORT] [-op OUTPUT_PATH]
 
-### B. Two Virtual File Transfer
+   Example:
 
-1.  Run docker-compose.yml
+       python Client.py -cip 127.0.0.1 -cp 3002 -bip 127.0.0.1 -bp 3001 -op video.mkv
 
-        docker compose up
+4. You can run more than one client at a time.
+5. If transfer is succesful, file will be written in folder `out`
 
-2.  Jump into each container
+### B. Virtual File Transfer
 
-        docker exec -it $(docker compose ps -q <name-service>) sh
+1. Run docker-compose.yml
 
-3.  Inside the server container run Server.py with certain arguments
+       docker compose up --build
 
-        python3 Server.py
+2. Jump into each container (A server and at least one client must be run). The service name must be the same with the one listed in the docker-compose.yml file.
 
-4.  Inside the client container run Client.py with certain arguments
+       docker exec -it $(docker compose ps -q <name-service>) sh
 
-        python3 Client.py
+   Example:
+
+       docker exec -it $(docker compose ps -q server) sh  // This is for server container
+       docker exec -it $(docker compose ps -q client1) sh  // This is for client container
+
+3. Inside the server container, run Server.py with certain arguments
+
+       python Server.py [-h] [-bip BROADCAST_IP] [-bp BROADCAST_PORT] [-ip INPUT_PATH]
+
+4. Inside the client container, run Client.py with certain arguments
+
+       python Client.py [-h] [-cip CLIENT_IP] [-cp CLIENT_PORT] [-bip BROADCAST_IP] [-bp BROADCAST_PORT] [-op OUTPUT_PATH]
 
 ## TEAM - BJIRKOM
 
