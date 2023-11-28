@@ -2,10 +2,10 @@ from lib.Connection import Connection
 from lib.ServerParser import ServerParser
 from lib.Segment import Segment
 from lib.flags import Flags
-from lib.constant import LISTEN_TIMEOUT, WINDOW_SIZE
+from lib.constant import LISTEN_TIMEOUT, WINDOW_SIZE, TIMEOUT
 from lib.FileParser import FileParser
+import threading 
 import os
-
 
 class Server:
     def __init__(self):
@@ -20,6 +20,20 @@ class Server:
         self.client_list = list()
 
         self.file_parser = FileParser(self.input_path, True)
+
+    def ask_parallelization(self):
+        choice = input(
+            "[?] Do you want the server to enable paralelization? (y/n) "
+        ).lower()
+
+        while choice != 'y' and choice != 'n':
+            print("[!] Please input correct input")
+            choice = input("[?] Do you want the server to enable paralelization? (y/n) ").lower()
+
+        if choice == "y":
+            self.is_parallel = True
+        else:
+            self.is_parallel = False
 
     # TODO: Resend if timeout
     def three_way_handshake(self, address):
@@ -84,6 +98,7 @@ class Server:
                 choice = input("[?] Listen more (y/n) ").lower()
 
                 while choice != "n" and choice != "y":
+                    print("[!] Please enter a correct input")
                     choice = input("[?] Listen more (y/n) ").lower()
 
                 if choice == "n":
@@ -92,6 +107,8 @@ class Server:
                         print(f"{idx+1}. {address[0]}:{address[1]}")
                     print("\n", end="")
                     break
+                else:
+                    print("[!] Listeing to more requests")
 
             except TimeoutError:
                 print("[Error] Timeout Error when listening client. Exiting...")
@@ -109,7 +126,7 @@ class Server:
         print(f"[!] [Client {address[0]}:{address[1]}] Initiating data transfer...")
 
         # ATTENTION uncomment for formulated checksum  error
-        formulated_checksum_error = 0
+        # formulated_checksum_error = 0
         while sequence_base - 2 < n_segment:
             
             # sending all file within window
@@ -117,9 +134,9 @@ class Server:
 
             # ATTENTION uncomment for formulated checksum  error
             # formulated checksum  error
-            if formulated_checksum_error % 5 == 0:
-                print("checksum altered")
-                file_segments[0].set_checksum(9999)
+            # if formulated_checksum_error % 5 == 0:
+            #     print("checksum altered")
+            #     file_segments[0].set_checksum(9999)
 
             for i in range(WINDOW_SIZE):
                 if sequence_base - 2 + i < n_segment:
@@ -131,7 +148,7 @@ class Server:
 
             i = 0
             # ATTENTION uncomment for formulated checksum  error
-            formulated_checksum_error += 1
+            # formulated_checksum_error += 1
             while i < WINDOW_SIZE and sequence_base - 2 < n_segment:
                 try:
                     reply_response, reply_address = self.connection.listenMsg()
@@ -161,7 +178,6 @@ class Server:
                                 f"[Segment SEQ={sequence_base}] [Client {address[0]}:{address[1]}] [FLAG] Recieved Wrong Flag"
                             )
                         elif response.get_ack() < sequence_base:
-                            print(response.get_ack())
                             print(
                                 f"[Segment SEQ={sequence_base}] [Client {address[0]}:{address[1]}] [ACK] Not ACKED. Duplicate ACK found. Resending segment from sequence number {sequence_base}"
                             )
@@ -221,12 +237,10 @@ class Server:
                         print(
                             f"[Error] [Client {address[0]}:{address[1]}] Received invalid closing response from client"
                         )
-                        exit()
                 else:
                     print(
                         f"[Error] [Client {address[0]}:{address[1]}] Received from unknown address"
                     )
-                    exit()
 
             except TimeoutError:
                 # Resend if timeout
@@ -279,12 +293,22 @@ class Server:
             f"[Close] [Client {address[0]}:{address[1]}] Connection closed with client {address[0]}:{address[1]}"
         )
 
+    def establish_send_close_connection(self, address):
+        self.three_way_handshake(address)
+        self.send_data(address)
+        self.close_connection(address)
+
     def initiate_send_data(self):
-        self.parsefile_to_segments()
-        for client_address in self.client_list:
-            self.three_way_handshake(client_address)
-            self.send_data(client_address)
-            self.close_connection(client_address)
+        if self.is_parallel:
+            while True:
+                _, client_address = self.connection_parallel.listenMsg(LISTEN_TIMEOUT)
+                if client_address not in self.client_list:
+                    self.client_list.append(client_address)
+                    threading.Thread(target=self.establish_send_close_connection, args=(client_address,)).start()
+        else:
+            for client_address in self.client_list:
+                self.establish_send_close_connection(client_address)
+
 
     # -1 = meta include
     # > -1 = file only
@@ -308,7 +332,7 @@ class Server:
             metadata_segment.set_payload(metadata)
 
             metadata_segment.set_seq(2)
-            metadata_segment.set_ack(0)
+            metadata_segment.set_ack(ack)
 
             file_segments.append(metadata_segment)
             segments_size = (
@@ -327,36 +351,10 @@ class Server:
 
         return file_segments
 
-    def parsefile_to_segments(self):
-        self.file_segments: list[Segment] = []
-
-        name = self.file_parser.get_name()
-        ext = self.file_parser.get_extension()
-        size = str(self.file_parser.get_size())
-
-        metadata = (
-            name.encode() + ",".encode() + ext.encode() + ",".encode() + size.encode()
-        )
-        metadata_segment = Segment()
-        metadata_segment.set_payload(metadata)
-
-        metadata_segment.set_seq(2)
-        metadata_segment.set_ack(0)
-
-        self.file_segments.append(metadata_segment)
-
-        num_segment = self.file_parser.get_count_segment()
-
-        for i in range(num_segment):
-            segment = Segment()
-            segment.set_payload(self.file_parser.get_chunk(i))
-            segment.set_seq(i + 3)
-            segment.set_ack(3)
-            self.file_segments.append(segment)
-
-
 if __name__ == "__main__":
     server = Server()
-    server.open_for_request()
+    server.ask_parallelization()
+    if not server.is_parallel: 
+        server.open_for_request()
     server.initiate_send_data()
     server.connection.closeSocket()
