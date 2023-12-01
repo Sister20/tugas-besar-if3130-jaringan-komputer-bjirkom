@@ -1,0 +1,71 @@
+version: '3.8'
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: server-bjirkom
+    ports:
+      - "3001:3001"
+    networks:
+      bjirkom:
+        ipv4_address: 10.5.0.2
+    command: sh
+    tty: true
+    stdin_open: true
+
+  client1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: client1-bjirkom
+    ports:
+      - "3002:3002"
+    networks:
+      bjirkom:
+        ipv4_address: 10.5.0.3
+    command: sh
+    tty: true
+    stdin_open: true
+    depends_on:
+      - server
+
+  client2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: client2-bjirkom
+    ports:
+      - "3003:3003"
+    networks:
+      bjirkom:
+        ipv4_address: 10.5.0.4
+    command: sh
+    tty: true
+    stdin_open: true
+    depends_on:
+      - server
+
+  client3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: client3-bjirkom
+    ports:
+      - "3004:3004"
+    networks:
+      bjirkom:
+        ipv4_address: 10.5.0.5
+    command: sh
+    tty: true
+    stdin_open: true
+    depends_on:
+      - server
+
+networks:
+  bjirkom:
+    driver: bridge
+    ipam:
+     config:
+       - subnet: 10.5.0.0/16
+         gateway: 10.5.0.1
